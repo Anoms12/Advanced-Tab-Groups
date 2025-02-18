@@ -28,6 +28,8 @@ tab-group:not(:has(tab:not([hidden]))) {
 @media (-moz-bool-pref: "zen.tabs.vertical") {
   tab-group {
     /* Visual Hierarchy Improvements */
+    display: flex !important;
+    flex-direction: column !important;
     @media not (-moz-bool-pref: "zen.view.sidebar-expanded") {
       width: var(--tab-min-width) !important;
     }
@@ -55,6 +57,8 @@ tab-group:not(:has(tab:not([hidden]))) {
     overflow: hidden !important;
 
     & .tab-group-label-container {
+      flex: 0 0 auto !important;
+      transform: none !important;
       --tab-group-color-pale: transparent !important;
       --tab-group-color: transparent !important;
       margin: 0 !important;
@@ -150,10 +154,10 @@ tab-group:not(:has(tab:not([hidden]))) {
     }
 
     & tab {
+      flex: 1 1 auto !important;
       opacity: 1 !important;
       margin-left: 18px !important;
-      transition: font-size 0.15s, margin 0.3s, padding 0.3s, opacity 0.1s,
-        scale, 0.2s !important;
+      transition: font-size 0.15s, margin 0.3s, padding 0.3s, opacity 0.1s !important;
       transition-delay: 0.1s !important;
       overflow: visible !important;
       @media (-moz-bool-pref: "tab.groups.display-tab-range") {
@@ -310,7 +314,6 @@ tab-group:not(:has(tab:not([hidden]))) {
 
     /* Expand when NOT collapsed */
     &:not([collapsed]) {
-      max-height: 500px !important;
       padding-top: 0;
       overflow-y: hidden !important;
     }
