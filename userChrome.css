@@ -109,9 +109,16 @@ tab-group:not([split-view-group]) {
       padding: 0 4px 0 4px !important;
       background: transparent !important;
       color: var(--tab-selected-textcolor) !important;
+      @media (-moz-pref("browser.tabs.groups.arc-style")) {
+      color: color-mix(in srgb, currentColor 70%, transparent) !important;
+      }
+      
 
       &:-moz-window-inactive {
-        color: var(--toolbox-textcolor-inactive) !important;
+        color: var(--tab-selected-textcolor) !important;
+        @media (-moz-pref("browser.tabs.groups.arc-style")) {
+          color: color-mix(in srgb, currentColor 70%, transparent) !important;
+        }
       }
 
       font-weight: 400 !important;
@@ -224,7 +231,7 @@ tab-group:not([split-view-group]) {
         & .group-icon {
           width: 14px !important;
           height: 14px !important;
-          fill: light-dark(black, white) !important;
+          fill: color-mix(in srgb, currentColor 70%, transparent) !important;
         }
       }
 
@@ -280,4 +287,12 @@ tab-group:not([split-view-group]) {
   tab-group[collapsed] tab[aria-hidden="true"] {
     transition: none !important;
   }
+}
+
+/* Native drag ghost: Zen clones the whole tab-group for group drags.
+   Collapse the child container inside the ghost so it stays a single
+   header row like native tab/folder ghosts (no JS clone surgery). */
+tab-group[drag-image] > .tab-group-container,
+tab-group[drag-image] .tab-group-overflow-count-container {
+  display: none !important;
 }

@@ -1,7 +1,13 @@
 # Changelog
 
-## 3.7.0 - 2026-09-04
+## 3.8.0 - 2026-09-10
 
+- Removed ATG's custom group drag ghost so Zen's native drag image owns setDragImage (fixes wrong size/offset ghost).
+- Removed duplicated native drag-list getters; now relies on Zen's childGroupsAndTabs/ariaFocusableItems instead of re-implementing elementIndex bookkeeping.
+- Added folder-like edge zones on group headers (top/bottom = reorder line, middle = drop-into highlight) so tabs can be placed above/below/outside groups.
+- Collapsed native drag ghost container via CSS [drag-image] rule instead of JS clone surgery.
+
+## 3.7.0 - 2026-09-04
 - Removed manual context menu actions for nesting a group under another group and moving a nested group to the top level.
 - Added a native drag-list compatibility bridge so Zen's tab drag/drop code can animate and target nested ATG group labels in DOM order.
 

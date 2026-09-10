@@ -1,0 +1,260 @@
+/* Advanced Tab Groups - Zen Library styles */
+/* Injected into the zen-library shadowRoot via <link> in ensureAdvancedTabGroupsStyles. */
+/* Keep selectors scoped to .library-workspace-* / .atg-tab-group-* (shadow DOM only). */
+
+.library-workspace-tab-group {
+  --atg-tab-group-color: var(--ws-primary-color);
+  --atg-tab-group-stroke: light-dark(
+    color-mix(in srgb, var(--zen-primary-color) 60%, black),
+    color-mix(in srgb, var(--zen-colors-primary) 20%, var(--toolbox-textcolor))
+  );
+  flex-shrink: 0;
+  width: 100%;
+  margin-block: 4px 2px;
+}
+
+.library-workspace-tab-group.collapsed > .library-workspace-tab-group-content {
+  max-height: 0;
+  overflow: hidden;
+}
+
+.library-workspace-tab-group-content {
+  margin-inline-start: 12px;
+  max-height: 4000px;
+  overflow: visible;
+  position: relative;
+  transition: max-height 0.15s var(--zen-library-easing);
+}
+
+.library-workspace-tab-group-content::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  pointer-events: none;
+  background: var(--atg-tab-group-color);
+}
+
+.library-workspace-tab-group[show-grain="true"] .library-workspace-tab-group-content::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  pointer-events: none;
+  background-image: url(chrome://browser/content/zen-images/grain-bg.png);
+  opacity: var(--group-grain, 0);
+  mix-blend-mode: overlay;
+  z-index: 2;
+}
+
+.library-workspace-tab-group.collapsed .library-workspace-tab-group-content .library-workspace-item:not(.selected) {
+  max-height: 0 !important;
+  min-height: 0 !important;
+  opacity: 0 !important;
+  margin-block: 0 !important;
+  pointer-events: none;
+}
+
+.library-workspace-item.atg-tab-group {
+  min-height: 36px;
+  height: 36px;
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-radius: var(--border-radius-medium, 6px) !important;
+  gap: 8px;
+  background: transparent;
+}
+
+.library-workspace-tab-group-content > .library-workspace-item {
+  padding-left: var(--tab-inline-padding) !important;
+}
+
+.library-workspace-item.atg-tab-group:hover {
+  background-color: var(--tab-hover-background-color, var(--ws-tab-hover-color)) !important;
+}
+
+.library-workspace-item.atg-tab-group.selected {
+  background: transparent;
+  box-shadow: none;
+}
+
+.library-workspace-item.atg-tab-group .item-label {
+  color: color-mix(in srgb, currentColor 70%, transparent) !important;
+  direction: ltr;
+  font-weight: 400 !important;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 !important;
+  mask-image: linear-gradient(to left, transparent, black 1em);
+}
+
+.atg-tab-group-chevron {
+  width: 10px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.atg-tab-group-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px !important;
+  position: relative;
+  margin: 0 0 0 var(--tab-inline-padding);
+  fill: var(--atg-tab-group-stroke) !important;
+  background: var(--atg-tab-group-color);
+  overflow: hidden;
+}
+
+.atg-tab-group-icon.has-custom-icon {
+  color: var(--atg-tab-group-stroke);
+}
+
+.atg-tab-group-icon .group-icon {
+  display: block;
+  width: 12px;
+  height: 12px;
+  fill: white;
+  -moz-context-properties: fill, fill-opacity;
+}
+
+.atg-tab-group-icon label {
+  transform: translate(0, -1px);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.atg-tab-group-icon-fallback {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--atg-tab-group-stroke);
+  opacity: 0.9;
+}
+
+.atg-tab-group-folder-button,
+.atg-tab-group-close-button {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-small, 4px);
+  flex-shrink: 0;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0;
+  pointer-events: none;
+  background: transparent;
+}
+
+.atg-tab-group-folder-button .icon-mask,
+.atg-tab-group-close-button .icon-mask {
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  pointer-events: none;
+}
+
+.atg-tab-group-folder-button .icon-mask {
+  mask-image: url("chrome://browser/skin/zen-icons/folder.svg");
+}
+
+.atg-tab-group-close-button .icon-mask {
+  mask-image: url("chrome://browser/skin/zen-icons/close.svg");
+}
+
+.library-workspace-item.atg-tab-group:hover .atg-tab-group-close-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (-moz-pref("browser.tabs.groups.show-folder-button")) {
+  .library-workspace-item.atg-tab-group:hover .atg-tab-group-folder-button {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.atg-tab-group-folder-button:hover,
+.atg-tab-group-close-button:hover {
+  background: var(--ws-tab-hover-color, var(--tab-hover-background-color)) !important;
+  opacity: 1 !important;
+}
+
+@media (-moz-pref("browser.tabs.groups.arc-style")), (-moz-pref("tab.groups.fill-folders")), (-moz-pref("tab.groups.theme-folders")) {
+  .library-workspace-item.atg-tab-group {
+    min-height: 30px;
+    height: 30px;
+    margin-block-start: 5px !important;
+    padding-left: var(--tab-inline-padding) !important;
+    padding-right: 0 !important;
+  }
+
+  .library-workspace-item.atg-tab-group:hover {
+    background-color: transparent !important;
+  }
+
+  .atg-tab-group-chevron {
+    display: none !important;
+  }
+
+  .atg-tab-group-icon {
+    display: none;
+    background: none !important;
+    margin: 0 !important;
+  }
+
+  .atg-tab-group-icon.has-custom-icon,
+  .atg-tab-group-icon[zen-emoji-open="true"] {
+    display: flex;
+  }
+
+  .atg-tab-group-icon .group-icon {
+    width: 14px !important;
+    height: 14px !important;
+    fill: light-dark(black, white) !important;
+  }
+
+  .library-workspace-item.atg-tab-group .item-label {
+    font-weight: 600 !important;
+    padding-inline: 0 var(--space-medium, 8px) !important;
+    margin-left: 0 !important;
+  }
+
+  .library-workspace-item.atg-tab-group:not(:has(.atg-tab-group-icon.has-custom-icon, .atg-tab-group-icon[zen-emoji-open="true"])) .item-label {
+    margin-left: 10px !important;
+  }
+
+  .library-workspace-tab-group-content {
+    margin-inline-start: 12px;
+  }
+
+  .library-workspace-tab-group-content::after,
+  .library-workspace-tab-group[show-grain="true"] .library-workspace-tab-group-content::before {
+    content: none !important;
+  }
+
+  .library-workspace-tab-group.collapsed .library-workspace-tab-group-content .library-workspace-item:not(.selected) {
+    max-height: var(--tab-min-height) !important;
+    min-height: var(--tab-min-height) !important;
+    opacity: 1 !important;
+    margin-block: 4px 2px !important;
+    pointer-events: auto;
+  }
+}

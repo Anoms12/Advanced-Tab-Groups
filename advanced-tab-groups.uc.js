@@ -4,7 +4,17 @@
 // ==/UserScript==
 /* ==== Tab groups ==== */
 /* https://github.com/Anoms12/Advanced-Tab-Groups */
-/* ======= v3.7.0 ======= */
+/* ======= v3.8.0 ======= */
+
+// Resolved once at load so the Zen Library shadowRoot <link> below can find
+// its sibling stylesheet even when this method runs much later.
+globalThis._advancedTabGroupsCssPath = (() => {
+  try {
+    return Components.stack.filename;
+  } catch {
+    return null;
+  }
+})();
 
 class AdvancedTabGroups {
   #initTabGroupListener;
@@ -26,7 +36,7 @@ class AdvancedTabGroups {
     // Set up observer for all tab groups
     this.setupObserver();
     this.setupDragAndDropSync();
-    this.setupNativeGroupDragIntegration();
+    this.setupGroupDropTargeting();
 
     // Add folder context menu item
     this.addFolderContextMenuItems();
@@ -82,214 +92,22 @@ class AdvancedTabGroups {
           return;
         }
 
-        const style = document.createElement("style");
-        style.id = "advanced-tab-groups-zen-library-styles";
-        style.textContent = `
-          .library-workspace-tab-group {
-            --atg-tab-group-color: var(--ws-primary-color);
-            --atg-tab-group-stroke: light-dark(
-              color-mix(in srgb, var(--zen-primary-color) 60%, black),
-              color-mix(in srgb, var(--zen-colors-primary) 20%, var(--toolbox-textcolor))
-            );
-            flex-shrink: 0;
-            width: 100%;
-            margin-block: 4px 2px;
+        const link = document.createElement("link");
+        link.id = "advanced-tab-groups-zen-library-styles";
+        link.rel = "stylesheet";
+        try {
+          const base =
+            globalThis._advancedTabGroupsCssPath ||
+            (typeof Components !== "undefined" ? Components.stack?.filename : null);
+          if (base) {
+            link.href = base.replace(/[^/\\]*\.uc\.js(\?.*)?$/i, "zen-library.css");
           }
-
-          .library-workspace-tab-group.collapsed > .library-workspace-tab-group-content {
-            max-height: 0;
-            overflow: hidden;
-          }
-
-          .library-workspace-tab-group-content {
-            margin-inline-start: 12px;
-            max-height: 4000px;
-            overflow: visible;
-            position: relative;
-            transition: max-height 0.15s var(--zen-library-easing);
-          }
-
-          .library-workspace-tab-group-content::after {
-            content: "";
-            position: absolute;
-            left: -2px;
-            top: 0;
-            width: 2px;
-            height: 100%;
-            pointer-events: none;
-            background: var(--atg-tab-group-color);
-          }
-
-          .library-workspace-tab-group[show-grain="true"] .library-workspace-tab-group-content::before {
-            content: "";
-            position: absolute;
-            left: -2px;
-            top: 0;
-            width: 2px;
-            height: 100%;
-            pointer-events: none;
-            background-image: url(chrome://browser/content/zen-images/grain-bg.png);
-            opacity: var(--group-grain, 0);
-            mix-blend-mode: overlay;
-            z-index: 2;
-          }
-
-          .library-workspace-tab-group.collapsed .library-workspace-tab-group-content .library-workspace-item:not(.selected) {
-            max-height: 0 !important;
-            min-height: 0 !important;
-            opacity: 0 !important;
-            margin-block: 0 !important;
-            pointer-events: none;
-          }
-
-          .library-workspace-item.atg-tab-group {
-            min-height: 36px;
-            height: 36px;
-            margin: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-            border-radius: var(--border-radius-medium, 6px) !important;
-            gap: 8px;
-            background: transparent;
-          }
-
-          .library-workspace-tab-group-content > .library-workspace-item {
-            padding-left: var(--tab-inline-padding) !important;
-          }
-
-          .library-workspace-item.atg-tab-group:hover {
-            background-color: var(--tab-hover-background-color, var(--ws-tab-hover-color)) !important;
-          }
-
-          .library-workspace-item.atg-tab-group.selected {
-            background: transparent;
-            box-shadow: none;
-          }
-
-          .library-workspace-item.atg-tab-group .item-label {
-            color: var(--tab-selected-textcolor, var(--ws-text-color)) !important;
-            direction: ltr;
-            font-weight: 400 !important;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            padding: 0 !important;
-            mask-image: linear-gradient(to left, transparent, black 1em);
-          }
-
-          .atg-tab-group-chevron {
-            width: 10px;
-            height: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            opacity: 0.75;
-          }
-
-          .atg-tab-group-icon {
-            width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px !important;
-            position: relative;
-            margin: 0 0 0 var(--tab-inline-padding);
-            fill: var(--atg-tab-group-stroke) !important;
-            background: var(--atg-tab-group-color);
-            overflow: hidden;
-          }
-
-          .atg-tab-group-icon.has-custom-icon {
-            color: var(--atg-tab-group-stroke);
-          }
-
-          .atg-tab-group-icon .group-icon {
-            display: block;
-            width: 12px;
-            height: 12px;
-            fill: white;
-            -moz-context-properties: fill, fill-opacity;
-          }
-
-          .atg-tab-group-icon label {
-            transform: translate(0, -1px);
-            font-size: 11px;
-            line-height: 16px;
-          }
-
-          .atg-tab-group-icon-fallback {
-            width: 8px;
-            height: 8px;
-            border-radius: 2px;
-            background: var(--atg-tab-group-stroke);
-            opacity: 0.9;
-          }
-
-          @media (-moz-pref("browser.tabs.groups.arc-style")), (-moz-pref("tab.groups.fill-folders")), (-moz-pref("tab.groups.theme-folders")) {
-            .library-workspace-item.atg-tab-group {
-              min-height: 30px;
-              height: 30px;
-              margin-block-start: 5px !important;
-              padding-left: var(--tab-inline-padding) !important;
-              padding-right: 0 !important;
-            }
-
-            .library-workspace-item.atg-tab-group:hover {
-              background-color: transparent !important;
-            }
-
-            .atg-tab-group-chevron {
-              display: none !important;
-            }
-
-            .atg-tab-group-icon {
-              display: none;
-              background: none !important;
-              margin: 0 !important;
-            }
-
-            .atg-tab-group-icon.has-custom-icon,
-            .atg-tab-group-icon[zen-emoji-open="true"] {
-              display: flex;
-            }
-
-            .atg-tab-group-icon .group-icon {
-              width: 14px !important;
-              height: 14px !important;
-              fill: light-dark(black, white) !important;
-            }
-
-            .library-workspace-item.atg-tab-group .item-label {
-              font-weight: 600 !important;
-              padding-inline: 0 var(--space-medium, 8px) !important;
-              margin-left: 0 !important;
-            }
-
-            .library-workspace-item.atg-tab-group:not(:has(.atg-tab-group-icon.has-custom-icon, .atg-tab-group-icon[zen-emoji-open="true"])) .item-label {
-              margin-left: 10px !important;
-            }
-
-            .library-workspace-tab-group-content {
-              margin-inline-start: 12px;
-            }
-
-            .library-workspace-tab-group-content::after,
-            .library-workspace-tab-group[show-grain="true"] .library-workspace-tab-group-content::before {
-              content: none !important;
-            }
-
-            .library-workspace-tab-group.collapsed .library-workspace-tab-group-content .library-workspace-item:not(.selected) {
-              max-height: var(--tab-min-height) !important;
-              min-height: var(--tab-min-height) !important;
-              opacity: 1 !important;
-              margin-block: 4px 2px !important;
-              pointer-events: auto;
-            }
-          }
-        `;
-        root.appendChild(style);
+        } catch (_) {}
+        if (!link.href) {
+          console.warn("[AdvancedTabGroups] Could not resolve zen-library.css path; library styles skipped");
+          return;
+        }
+        root.appendChild(link);
       };
 
       proto.createAdvancedTabGroupsIconNode = function (group) {
@@ -426,6 +244,54 @@ class AdvancedTabGroups {
             textContent: group.label || "Tab Group"
           })
         );
+
+        const folderBtn = this.el("div", {
+          className: "atg-tab-group-folder-button",
+          title: "Convert to Folder",
+          onclick: e => {
+            e.stopPropagation();
+            e.preventDefault();
+            try {
+              globalThis.advancedTabGroups?.convertGroupToFolder?.(group);
+            } catch (err) {
+              console.error("[AdvancedTabGroups] Error converting to folder from library:", err);
+            }
+            setTimeout(() => document.querySelector("zen-library")?.update?.(true), 200);
+          }
+        }, [this.el("div", { className: "icon-mask" })]);
+        folderBtn.addEventListener("mousedown", e => {
+          e.stopPropagation();
+          e.preventDefault();
+        });
+        headerEl.appendChild(folderBtn);
+
+        const closeBtn = this.el("div", {
+          className: "atg-tab-group-close-button",
+          title: "Close Group",
+          onclick: e => {
+            e.stopPropagation();
+            e.preventDefault();
+            try {
+              const atg = globalThis.advancedTabGroups;
+              if (atg) {
+                atg.removeSavedColor?.(group.id);
+                atg.removeSavedIcon?.(group.id);
+                atg.removeSavedParentTree?.(group.id);
+                atg.removeSavedCollapsedState?.(group.id);
+              }
+              window.gBrowser?.removeTabGroup?.(group);
+            } catch (err) {
+              console.error("[AdvancedTabGroups] Error closing group from library:", err);
+            }
+            setTimeout(() => document.querySelector("zen-library")?.update?.(true), 200);
+          }
+        }, [this.el("div", { className: "icon-mask" })]);
+        closeBtn.addEventListener("mousedown", e => {
+          e.stopPropagation();
+          e.preventDefault();
+        });
+        headerEl.appendChild(closeBtn);
+
         groupEl.appendChild(headerEl);
 
         const contentEl = this.el("div", {
@@ -1185,6 +1051,11 @@ class AdvancedTabGroups {
     }
     this._dragAndDropSyncAdded = true;
 
+    // NOTE: We intentionally do NOT call dataTransfer.setDragImage() here.
+    // Zen's ZenDragAndDrop.startTabDrag() owns the drag ghost
+    // (#createDragImageForTabs). A second setDragImage from the mod races
+    // native and causes the wrong size/offset that felt non-native.
+    // Hierarchy persistence only observes the real DOM moves native makes.
     const scheduleSync = () => this.scheduleSavedParentsSync();
     const syncEvents = [
       "drop",
@@ -1198,16 +1069,9 @@ class AdvancedTabGroups {
     for (const eventName of syncEvents) {
       document.addEventListener(eventName, scheduleSync, true);
     }
-    document.addEventListener("dragstart", event => {
-      this.startGroupDragPreview(event);
-    }, true);
-    document.addEventListener("dragend", event => {
-      this.clearGroupDragPreview();
-      scheduleSync(event);
-    }, true);
-    document.addEventListener("drop", () => {
-      this.clearGroupDragPreview();
-    }, true);
+    // Re-sync after a native drag finishes (native fires dragend on the
+    // tab container; no custom preview cleanup needed anymore).
+    document.addEventListener("dragend", scheduleSync, true);
 
     const observer = new MutationObserver(mutations => {
       const touchedGroupTree = mutations.some(mutation => {
@@ -1239,110 +1103,144 @@ class AdvancedTabGroups {
     this._dragAndDropSyncObserver = observer;
   }
 
-  setupNativeGroupDragIntegration() {
+  setupGroupDropTargeting() {
+    // Zen's native drag pipeline already understands nested tab groups
+    // (tabgroup-js.patch: childGroupsAndTabs/group/visible/level, tabs-js.patch:
+    // ariaFocusableItems). Do NOT override dragAndDropElements or those
+    // accessors here — earlier ATG versions did and the duplicated
+    // elementIndex bookkeeping drifted from native, breaking drop math.
     try {
-      this.ensureNativeTabGroupAccessors();
-      this.patchNativeDragAndDropElements();
+      const TabGroupClass =
+        window.MozTabbrowserTabGroup || customElements.get("tab-group");
+      const proto = TabGroupClass?.prototype;
+      const missing = ["groupContainer", "group", "visible", "childGroupsAndTabs"]
+        .filter(key => !proto || !(key in proto));
+      if (missing.length) {
+        console.warn(
+          "[AdvancedTabGroups] Native tab-group drag APIs missing:",
+          missing.join(", "),
+          "— nested drag targeting may be degraded on this Zen version."
+        );
+      }
     } catch (error) {
-      console.error("[AdvancedTabGroups] Error setting up native group drag integration:", error);
+      console.error("[AdvancedTabGroups] Error checking native group drag APIs:", error);
+    }
+
+    if (this._groupDropTargetingAdded) {
+      return;
+    }
+    this._groupDropTargetingAdded = true;
+
+    // Mirror Zen folder edge behavior for ATG group headers so tabs can be
+    // placed ABOVE / BELOW a group instead of always dropping INTO it.
+    //
+    // Native ZenDragAndDrop.#applyDragoverIndicator resolves
+    // event.target.closest(':is(.zen-drop-target)'):
+    // - header (.zen-drop-target) hit -> background highlight -> drop INTO.
+    // - no hit -> geometric getOverlappedElement -> line indicator -> reorder.
+    // Folders get edge zones via zen.tabs.folder-dragover-threshold-percent
+    // (top/bottom ~20% = line/reorder, middle = background/into). ATG headers
+    // had no such zones, so every pixel dropped into the group.
+    //
+    // We get the same feel without forking private native methods by toggling
+    // the header's zen-drop-target class per pointer position: edges remove it
+    // (native falls back to reorder math + line indicator), middle restores it
+    // (native shows background highlight + drop-into). Restored on drop/end.
+    document.addEventListener("dragover", event => {
+      this.updateGroupHeaderDropZone(event);
+    }, true);
+    for (const endEvent of ["drop", "dragend", "dragleave"]) {
+      document.addEventListener(endEvent, () => {
+        this.restoreGroupHeaderDropZones();
+      }, true);
     }
   }
 
-  ensureNativeTabGroupAccessors() {
-    const TabGroupClass = window.MozTabbrowserTabGroup ||
-      customElements.get("tab-group");
-    const proto = TabGroupClass?.prototype;
-    if (!proto) {
-      return;
-    }
-
-    if (!Object.getOwnPropertyDescriptor(proto, "groupContainer")) {
-      Object.defineProperty(proto, "groupContainer", {
-        configurable: true,
-        get() {
-          return this.querySelector(":scope > .tab-group-container");
-        }
-      });
-    }
-
-    if (!Object.getOwnPropertyDescriptor(proto, "group")) {
-      Object.defineProperty(proto, "group", {
-        configurable: true,
-        get() {
-          const parentGroup = this.parentElement?.closest?.("tab-group");
-          return parentGroup && parentGroup !== this ? parentGroup : null;
-        }
-      });
-    }
-
-    if (!Object.getOwnPropertyDescriptor(proto, "visible")) {
-      Object.defineProperty(proto, "visible", {
-        configurable: true,
-        get() {
-          let currentGroup = this;
-          while (currentGroup?.group) {
-            currentGroup = currentGroup.group;
-            if (currentGroup.collapsed || currentGroup.hasAttribute("collapsed")) {
-              return false;
-            }
-          }
-          return !this.hidden && !this.hasAttribute("hidden");
-        }
-      });
-    }
-
-    if (!Object.getOwnPropertyDescriptor(proto, "level")) {
-      Object.defineProperty(proto, "level", {
-        configurable: true,
-        get() {
-          return (this.group?.level || 0) + (this.group ? 1 : 0);
-        }
-      });
-    }
-
-    if (!Object.getOwnPropertyDescriptor(proto, "childGroupsAndTabs")) {
-      Object.defineProperty(proto, "childGroupsAndTabs", {
-        configurable: true,
-        get() {
-          return globalThis.advancedTabGroups?.getNativeGroupDragChildren(this) || [];
-        }
-      });
+  getFolderDragoverThreshold() {
+    try {
+      const raw = Services.prefs.getIntPref(
+        "zen.tabs.folder-dragover-threshold-percent",
+        20
+      );
+      return Math.min(0.45, Math.max(0.05, raw / 100));
+    } catch {
+      return 0.2;
     }
   }
 
-  patchNativeDragAndDropElements() {
-    const tabContainer = gBrowser?.tabContainer;
-    if (!tabContainer || tabContainer._advancedTabGroupsNativeDragPatched) {
-      return;
-    }
-
-    const descriptor = this.findPropertyDescriptor(tabContainer, "dragAndDropElements");
-    const nativeGetter = descriptor?.get;
-    if (!nativeGetter) {
-      return;
-    }
-
-    const self = this;
-    Object.defineProperty(tabContainer, "dragAndDropElements", {
-      configurable: true,
-      get() {
-        const nativeItems = Array.from(nativeGetter.call(this) || []);
-        return self.expandNativeDragElements(nativeItems);
+  updateGroupHeaderDropZone(event) {
+    try {
+      const types = event.dataTransfer?.types;
+      const isTabDrag = !types ||
+        Array.from(types).includes("application/x-moz-tab") ||
+        Array.from(types).includes("text/tab");
+      if (event.dataTransfer && types && !isTabDrag) {
+        return;
       }
-    });
-    tabContainer._advancedTabGroupsNativeDragPatched = true;
+      const container = event.target?.closest?.(".tab-group-label-container");
+      const group = container?.closest?.("tab-group");
+      if (!group || !this.isManagedTabGroup(group)) {
+        if (this._edgeZoneHeader && !this._edgeZoneHeader.isConnected) {
+          this._edgeZoneHeader = null;
+        }
+        return;
+      }
+      // Never interfere with folder / split-view / essentials drags.
+      if (group.hasAttribute("split-view-group")) {
+        return;
+      }
+
+      const rect = container.getBoundingClientRect?.();
+      if (!rect?.height) {
+        return;
+      }
+      const threshold = this.getFolderDragoverThreshold();
+      const overlap = (event.clientY - rect.top) / rect.height;
+      const childCount = group.childGroupsAndTabs?.length ??
+        group.querySelectorAll?.(":scope > .tab-group-container > tab, :scope > .tab-group-container > tab-group").length ??
+        0;
+      const isEdge = overlap < threshold ||
+        (overlap > 1 - threshold &&
+          (group.collapsed || group.hasAttribute("collapsed") || childCount < 2));
+
+      if (isEdge) {
+        // Reorder intent: hide header from native closest('.zen-drop-target')
+        // so native draws the line indicator above/below instead of the
+        // group background highlight.
+        if (container.classList.contains("zen-drop-target")) {
+          container.classList.remove("zen-drop-target");
+          container.setAttribute("data-atg-edge-reorder", "true");
+          this._edgeZoneHeader = container;
+        }
+      } else if (container.hasAttribute("data-atg-edge-reorder")) {
+        container.classList.add("zen-drop-target");
+        container.removeAttribute("data-atg-edge-reorder");
+        if (this._edgeZoneHeader === container) {
+          this._edgeZoneHeader = null;
+        }
+      } else if (this._edgeZoneHeader && this._edgeZoneHeader !== container) {
+        this.restoreGroupHeaderDropZones();
+      }
+    } catch (error) {
+      console.error("[AdvancedTabGroups] Error updating group drop zone:", error);
+    }
   }
 
-  findPropertyDescriptor(object, propertyName) {
-    let current = object;
-    while (current) {
-      const descriptor = Object.getOwnPropertyDescriptor(current, propertyName);
-      if (descriptor) {
-        return descriptor;
+  restoreGroupHeaderDropZones() {
+    try {
+      if (this._edgeZoneHeader?.isConnected) {
+        this._edgeZoneHeader.classList.add("zen-drop-target");
+        this._edgeZoneHeader.removeAttribute("data-atg-edge-reorder");
       }
-      current = Object.getPrototypeOf(current);
-    }
-    return null;
+      this._edgeZoneHeader = null;
+      // Safety net in case a drag ended mid-edge on a different header.
+      document.querySelectorAll?.(
+        '.tab-group-label-container[data-atg-edge-reorder]'
+      ).forEach(el => {
+        el.classList.add("zen-drop-target");
+        el.removeAttribute("data-atg-edge-reorder");
+      });
+    } catch (_) {}
   }
 
   isManagedTabGroup(group) {
@@ -1353,87 +1251,6 @@ class AdvancedTabGroups {
       !group.classList.contains("zen-folder") &&
       !group.hasAttribute("zen-folder")
     );
-  }
-
-  getGroupLabelElement(group) {
-    return group?.labelElement ||
-      group?.querySelector?.(":scope > .tab-group-label-container > .tab-group-label") ||
-      null;
-  }
-
-  getNativeGroupDragChildren(group) {
-    const result = [];
-    const container = this.ensureGroupContainer(group);
-    if (!container) {
-      return result;
-    }
-
-    for (const child of Array.from(container.children)) {
-      if (
-        child.classList?.contains("zen-tab-group-start") ||
-        child.id === "tabbrowser-arrowscrollbox-periphery" ||
-        child.classList?.contains("pinned-tabs-container-separator")
-      ) {
-        continue;
-      }
-
-      if (gBrowser.isTab?.(child)) {
-        if (child.visible) {
-          result.push(child);
-        }
-      } else if (this.isManagedTabGroup(child)) {
-        const label = this.getGroupLabelElement(child);
-        if (label) {
-          try { label.visible = child.visible !== false; } catch {}
-          result.push(label);
-        }
-        result.push(...this.getNativeGroupDragChildren(child));
-      } else if (Array.isArray(child.tabs)) {
-        result.push(...child.tabs.filter(tab => tab?.visible));
-      }
-    }
-    return result;
-  }
-
-  expandNativeDragElements(nativeItems) {
-    const expanded = [];
-    const seen = new Set();
-
-    const pushUnique = item => {
-      if (!item || seen.has(item)) {
-        return;
-      }
-      seen.add(item);
-      expanded.push(item);
-    };
-
-    const pushGroup = group => {
-      if (!this.isManagedTabGroup(group)) {
-        return false;
-      }
-      const label = this.getGroupLabelElement(group);
-      if (label) {
-        try { label.visible = group.visible !== false; } catch {}
-        pushUnique(label);
-      }
-      for (const child of this.getNativeGroupDragChildren(group)) {
-        pushUnique(child);
-      }
-      return true;
-    };
-
-    for (const item of nativeItems) {
-      const group = item?.group || (item?.localName === "tab-group" ? item : null);
-      if (pushGroup(group)) {
-        continue;
-      }
-      pushUnique(item);
-    }
-
-    expanded.forEach((item, index) => {
-      try { item.elementIndex = index; } catch {}
-    });
-    return expanded;
   }
 
   scheduleSavedParentsSync() {
@@ -1448,10 +1265,15 @@ class AdvancedTabGroups {
 
   syncSavedParentsFromDom() {
     try {
+      // Native may fire sync while an edge-reorder header is still stripped
+      // of zen-drop-target — restore first so later dragover math is stable.
+      this.restoreGroupHeaderDropZones?.();
       const parents = {};
       for (const group of this.tabGroups) {
         if (
           !group.id ||
+          !group.isConnected ||
+          group.hasAttribute("drag-image") ||
           group.hasAttribute("split-view-group") ||
           group.classList.contains("zen-folder") ||
           group.hasAttribute("zen-folder")
@@ -1479,176 +1301,6 @@ class AdvancedTabGroups {
     } catch (error) {
       console.error("[AdvancedTabGroups] Error syncing group hierarchy after drag/drop:", error);
     }
-  }
-
-  getDragPreviewTargetGroup(event) {
-    const labelTarget = event.target?.closest?.(
-      ".tab-group-label, .tab-group-label-container"
-    );
-    const group = labelTarget?.closest?.("tab-group");
-    if (
-      !group ||
-      group.hasAttribute("split-view-group") ||
-      group.classList.contains("zen-folder") ||
-      group.hasAttribute("zen-folder")
-    ) {
-      return null;
-    }
-    return group;
-  }
-
-  getGroupDragPreviewColors(group) {
-    const labelContainer = group.querySelector(".tab-group-label-container");
-    const label = group.querySelector(".tab-group-label");
-    const labelStyle = label ? getComputedStyle(label) : null;
-    const labelContainerStyle = labelContainer ? getComputedStyle(labelContainer) : null;
-    const rootStyle = getComputedStyle(document.documentElement);
-    const groupColor = this.getGroupColorValue(group);
-    const groupStroke = this.getGroupStrokeValue(group);
-    const containerBg = labelContainerStyle?.backgroundColor || "";
-    const isTransparentBg = !containerBg ||
-      containerBg === "transparent" ||
-      /^rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)$/i.test(containerBg);
-    const rootBg = rootStyle.getPropertyValue("--zen-main-browser-background").trim() ||
-      rootStyle.getPropertyValue("--toolbar-bgcolor").trim() ||
-      rootStyle.backgroundColor ||
-      "Canvas";
-
-    return {
-      textColor:
-        labelStyle?.color ||
-        rootStyle.getPropertyValue("--tab-selected-textcolor").trim() ||
-        rootStyle.getPropertyValue("--toolbox-textcolor").trim() ||
-        "currentColor",
-      background:
-        isTransparentBg ? `color-mix(in srgb, ${rootBg} 92%, transparent)` : containerBg,
-      borderColor:
-        rootStyle.getPropertyValue("--zen-colors-border").trim() ||
-        "color-mix(in srgb, currentColor 16%, transparent)",
-      groupColor,
-      groupStroke,
-    };
-  }
-
-  createGroupDragImageGroup(group) {
-    const clone = group.cloneNode(true);
-    clone.setAttribute("drag-image", "true");
-    clone.removeAttribute("id");
-    clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
-    clone.querySelector(".tab-group-container")?.remove();
-    clone.querySelector(".tab-group-overflow-count-container")?.remove();
-
-    const labelContainer = clone.querySelector(".tab-group-label-container");
-    if (labelContainer) {
-      labelContainer.classList.add("advanced-tab-groups-drag-preview-label");
-      labelContainer.style.cssText += [
-        "width:100%",
-        "height:34px",
-        "margin:0!important",
-        "padding:0 10px 0 0!important",
-        "border-radius:8px!important",
-        "display:flex!important",
-        "align-items:center!important",
-        "overflow:hidden!important",
-      ].join(";");
-    }
-
-    return clone;
-  }
-
-  createGroupDragPreview(group) {
-    this.syncGroupColorVars(group);
-    const colors = this.getGroupDragPreviewColors(group);
-
-    const preview = this.createGroupDragImageGroup(group);
-    preview.className = "advanced-tab-groups-drag-preview";
-    preview.setAttribute("drag-image", "true");
-    preview.style.cssText = [
-      "position:fixed",
-      "left:0",
-      "top:0",
-      "z-index:2147483647",
-      "height:34px",
-      "width:260px",
-      "max-width:260px",
-      "box-sizing:border-box",
-      "display:flex",
-      "flex-direction:column",
-      "border-radius:8px",
-      `background:${colors.background}`,
-      `border:1px solid ${colors.borderColor}`,
-      "box-shadow:0 8px 22px rgba(0,0,0,.24)",
-      `color:${colors.textColor}`,
-      "font:menu",
-      "font-size:12px",
-      "font-weight:500",
-      "line-height:1",
-      "pointer-events:none",
-      "-moz-window-dragging:no-drag",
-    ].join(";");
-
-    document.documentElement.appendChild(preview);
-    return preview;
-  }
-
-  getGroupDragPreviewOffset(event, group, preview) {
-    const targetRect =
-      event.target?.closest?.(".tab-group-label-container")?.getBoundingClientRect?.() ||
-      group.querySelector(".tab-group-label-container")?.getBoundingClientRect?.();
-    const previewRect = preview.getBoundingClientRect();
-    if (!targetRect || !previewRect.width || !previewRect.height) {
-      return { x: 14, y: 17 };
-    }
-
-    return {
-      x: Math.max(10, Math.min(previewRect.width - 10, event.clientX - targetRect.left)),
-      y: Math.max(8, Math.min(previewRect.height - 8, event.clientY - targetRect.top)),
-    };
-  }
-
-  startGroupDragPreview(event) {
-    try {
-      const group = this.getDragPreviewTargetGroup(event);
-      if (!group) {
-        return;
-      }
-
-      group.setAttribute("atg-drag-preview-active", "true");
-      group.querySelector(".tab-group-label")?.setAttribute("dragtarget", "true");
-      group.querySelector(".tab-group-label-container")?.setAttribute("dragtarget", "true");
-
-      this.clearGroupDragPreview();
-      const preview = this.createGroupDragPreview(group);
-      this._groupDragPreview = preview;
-      this._groupDragPreviewSource = group;
-      const dataTransfer = event.dataTransfer;
-      if (!dataTransfer?.setDragImage) {
-        return;
-      }
-      const offset = this.getGroupDragPreviewOffset(event, group, preview);
-      preview.style.left = `${Math.max(0, event.clientX - offset.x)}px`;
-      preview.style.top = `${Math.max(0, event.clientY - offset.y)}px`;
-      dataTransfer.setDragImage(preview, offset.x, offset.y);
-    } catch (error) {
-      console.error("[AdvancedTabGroups] Error creating group drag preview:", error);
-    }
-  }
-
-  clearGroupDragPreview() {
-    try {
-      this._groupDragPreview?.remove?.();
-    } catch (_) {}
-    try {
-      this._groupDragPreviewSource?.removeAttribute?.("atg-drag-preview-active");
-      this._groupDragPreviewSource
-        ?.querySelector?.(".tab-group-label")
-        ?.removeAttribute?.("dragtarget");
-      this._groupDragPreviewSource
-        ?.querySelector?.(".tab-group-label-container")
-        ?.removeAttribute?.("dragtarget");
-    } catch (_) {}
-    this._groupDragPreview = null;
-    this._groupDragPreviewSource = null;
   }
 
   getWorkspaces(includeSynced = false) {
