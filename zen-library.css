@@ -243,10 +243,6 @@
     margin-left: 0 !important;
   }
 
-  .library-workspace-item.atg-tab-group:not(:has(.atg-tab-group-icon.has-custom-icon, .atg-tab-group-icon[zen-emoji-open="true"])) .item-label {
-    margin-left: 10px !important;
-  }
-
   .library-workspace-tab-group-content {
     margin-inline-start: 5px;
   }
