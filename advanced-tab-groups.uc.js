@@ -167,6 +167,54 @@ class AdvancedTabGroups {
         );
       };
 
+      proto.getAdvancedTabGroupsLibraryTextColor = function (group) {
+        const label = group?.querySelector?.(".tab-group-label");
+        const labelColor = label ? window.getComputedStyle(label).color : "";
+        if (labelColor) {
+          return labelColor;
+        }
+
+        const groupColor = group ? window.getComputedStyle(group).color : "";
+        if (groupColor) {
+          return groupColor;
+        }
+
+        return window.getComputedStyle(document.documentElement)
+          .getPropertyValue("--tab-selected-textcolor")
+          .trim();
+      };
+
+      proto.shouldShowAdvancedTabGroupsFolderButton = function () {
+        try {
+          return Services.prefs.getBoolPref("browser.tabs.groups.show-folder-button", false);
+        } catch (_) {
+          return false;
+        }
+      };
+
+      proto.setAdvancedTabGroupsLibraryExpanded = function (group, groupEl, expanded) {
+        if (!group || !groupEl) {
+          return;
+        }
+
+        groupEl.classList.toggle("collapsed", !expanded);
+        groupEl.toggleAttribute("collapsed", !expanded);
+        groupEl.toggleAttribute("expanded", expanded);
+
+        try {
+          if (expanded) {
+            group.removeAttribute("collapsed");
+          } else {
+            group.setAttribute("collapsed", "true");
+          }
+        } catch (err) {
+          console.error("[AdvancedTabGroups] Error syncing library collapsed state:", err);
+        }
+
+        globalThis.advancedTabGroups?.saveGroupCollapsedState?.(group.id, !expanded);
+        setTimeout(() => document.querySelector("zen-library")?.update?.(true), 180);
+      };
+
       proto.renderAdvancedTabGroupsGroup = function (group, container, wsId) {
         this.ensureAdvancedTabGroupsStyles();
 
@@ -175,14 +223,11 @@ class AdvancedTabGroups {
           Services.prefs.getBoolPref("tab.groups.fill-folders", false) ||
           Services.prefs.getBoolPref("tab.groups.theme-folders", false);
         const groupId = `advanced-tab-groups:${group.id || `${wsId}:${group.label}`}`;
-        let isExpanded;
+        let isExpanded = !group.hasAttribute("collapsed");
         if (isArcLike) {
           isExpanded = true;
           this._folderExpansion.set(groupId, true);
-        } else if (this._folderExpansion.has(groupId)) {
-          isExpanded = this._folderExpansion.get(groupId);
         } else {
-          isExpanded = !group.hasAttribute("collapsed");
           this._folderExpansion.set(groupId, isExpanded);
         }
 
@@ -195,15 +240,21 @@ class AdvancedTabGroups {
         const hasActive = tabs.some(tab => tab.selected);
         const groupColor = this.getAdvancedTabGroupsLibraryColor(group);
         const groupStroke = this.getAdvancedTabGroupsLibraryStroke(group);
+        const textColor = this.getAdvancedTabGroupsLibraryTextColor(group);
 
         const groupEl = this.el("div", {
           className: `library-workspace-tab-group ${isExpanded ? "" : "collapsed"}`
         });
+        groupEl.toggleAttribute("expanded", isExpanded);
+        groupEl.toggleAttribute("collapsed", !isExpanded);
         if (groupColor) {
           groupEl.style.setProperty("--atg-tab-group-color", groupColor);
         }
         if (groupStroke && !groupStroke.includes("gradient")) {
           groupEl.style.setProperty("--atg-tab-group-stroke", groupStroke);
+        }
+        if (textColor) {
+          groupEl.style.setProperty("--atg-tab-group-textcolor", textColor);
         }
         if (group.hasAttribute("show-grain")) {
           groupEl.setAttribute("show-grain", group.getAttribute("show-grain"));
@@ -221,18 +272,9 @@ class AdvancedTabGroups {
               return;
             }
 
-            const newlyExpanded = !this._folderExpansion.get(groupId);
+            const newlyExpanded = group.hasAttribute("collapsed");
             this._folderExpansion.set(groupId, newlyExpanded);
-            groupEl.classList.toggle("collapsed", !newlyExpanded);
-
-            const chevron = headerEl.querySelector(".atg-tab-group-chevron svg");
-            if (chevron) {
-              const rot = newlyExpanded ? "0deg" : "-90deg";
-              chevron.setAttribute(
-                "style",
-                `transform: rotate(${rot}); transition: transform 0.2s;`
-              );
-            }
+            this.setAdvancedTabGroupsLibraryExpanded(group, groupEl, newlyExpanded);
           }
         });
 
@@ -245,25 +287,27 @@ class AdvancedTabGroups {
           })
         );
 
-        const folderBtn = this.el("div", {
-          className: "atg-tab-group-folder-button",
-          title: "Convert to Folder",
-          onclick: e => {
+        if (this.shouldShowAdvancedTabGroupsFolderButton()) {
+          const folderBtn = this.el("div", {
+            className: "atg-tab-group-folder-button",
+            title: "Convert to Folder",
+            onclick: e => {
+              e.stopPropagation();
+              e.preventDefault();
+              try {
+                globalThis.advancedTabGroups?.convertGroupToFolder?.(group);
+              } catch (err) {
+                console.error("[AdvancedTabGroups] Error converting to folder from library:", err);
+              }
+              setTimeout(() => document.querySelector("zen-library")?.update?.(true), 200);
+            }
+          }, [this.el("div", { className: "icon-mask" })]);
+          folderBtn.addEventListener("mousedown", e => {
             e.stopPropagation();
             e.preventDefault();
-            try {
-              globalThis.advancedTabGroups?.convertGroupToFolder?.(group);
-            } catch (err) {
-              console.error("[AdvancedTabGroups] Error converting to folder from library:", err);
-            }
-            setTimeout(() => document.querySelector("zen-library")?.update?.(true), 200);
-          }
-        }, [this.el("div", { className: "icon-mask" })]);
-        folderBtn.addEventListener("mousedown", e => {
-          e.stopPropagation();
-          e.preventDefault();
-        });
-        headerEl.appendChild(folderBtn);
+          });
+          headerEl.appendChild(folderBtn);
+        }
 
         const closeBtn = this.el("div", {
           className: "atg-tab-group-close-button",

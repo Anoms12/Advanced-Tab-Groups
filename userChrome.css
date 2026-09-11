@@ -108,14 +108,12 @@ tab-group:not([split-view-group]) {
       height: 100% !important;
       padding: 0 4px 0 4px !important;
       background: transparent !important;
-      color: var(--tab-selected-textcolor) !important;
       @media (-moz-pref("browser.tabs.groups.arc-style")) {
       color: color-mix(in srgb, currentColor 70%, transparent) !important;
       }
       
 
       &:-moz-window-inactive {
-        color: var(--tab-selected-textcolor) !important;
         @media (-moz-pref("browser.tabs.groups.arc-style")) {
           color: color-mix(in srgb, currentColor 70%, transparent) !important;
         }
@@ -127,6 +125,9 @@ tab-group:not([split-view-group]) {
       flex-direction: row;
       align-items: center;
       gap: 5px;
+      .tab-group-label {
+        color: var(--toolbox-textcolor) !important;
+      }
     }
   }
 
